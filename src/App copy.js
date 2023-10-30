@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 const tempMovieData = [
   {
@@ -47,74 +47,22 @@ const tempWatchedData = [
   },
 ];
 
-const KEY = "912fad36";
-
 const average = (arr) =>
   arr.reduce((acc, cur, i, arr) => acc + cur / arr.length, 0);
 
 export default function App() {
-  const [query, setQuery] = useState("");
-  const [movies, setMovies] = useState([]);
-  const [watched, setWatched] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [selectedMovie, setSelectedMovie] = useState(null);
-
-  function handleBackButton() {
-    setSelectedMovie(() => null);
-  }
-
-  useEffect(
-    function () {
-      async function getMovies() {
-        try {
-          setIsLoading(true);
-          setError(false);
-          const res = await fetch(
-            `http://www.omdbapi.com/?apikey=${KEY}&s=${query}`
-          );
-
-          if (!res.ok) throw new Error("There was an error in fetching!");
-
-          const data = await res.json();
-          if (data.Response === "False") throw new Error("No Such Movie");
-          setMovies(data.Search);
-        } catch (err) {
-          setError(err.message);
-        } finally {
-          setIsLoading(false);
-        }
-      }
-      if (!query.length) {
-        setMovies([]);
-        setError("");
-        return;
-      }
-      getMovies();
-    },
-    [query]
-  );
-
+  const [movies, setMovies] = useState(tempMovieData);
+  const [watched, setWatched] = useState(tempWatchedData);
   return (
     <>
       <NavBar>
         <Logo />
-        <SearchBox query={query} setQuery={setQuery} />
+        <SearchBox />
         <ResultsBox movies={movies} />
       </NavBar>
       <main className="main">
-        <LeftList
-          movies={movies}
-          isLoading={isLoading}
-          error={error}
-          selectedMovie={selectedMovie}
-          setSelectedMovie={setSelectedMovie}
-        />
-        <RightList
-          watched={watched}
-          selectedMovie={selectedMovie}
-          handleBackButton={handleBackButton}
-        />
+        <LeftList movies={movies} />
+        <RightList watched={watched} />
       </main>
     </>
   );
@@ -124,48 +72,22 @@ function NavBar({ children }) {
   return <nav className="nav-bar">{children}</nav>;
 }
 
-function LeftList({
-  movies,
-  isLoading,
-  error,
-  selectedMovie,
-  setSelectedMovie,
-}) {
+function LeftList({ movies }) {
   const [isOpen1, setIsOpen1] = useState(true);
   return (
     <div className="box">
       <CollapseButton isOpen={isOpen1} setIsOpen={setIsOpen1} />
-      {error ? <ErrorMessage error={error} /> : ""}
-      {isLoading && !error ? (
-        <Loader />
-      ) : (
-        isOpen1 && (
-          <MoviesList
-            movies={movies}
-            selectedMovie={selectedMovie}
-            setSelectedMovie={setSelectedMovie}
-          />
-        )
-      )}
+      {isOpen1 && <MoviesList movies={movies} />}
     </div>
   );
 }
 
-function RightList({ watched, selectedMovie, handleBackButton }) {
+function RightList({ watched }) {
   const [isOpen2, setIsOpen2] = useState(true);
   return (
     <div className="box">
-      {selectedMovie ? (
-        <DisplaySelectedMovie
-          selectedMovie={selectedMovie}
-          handleBackButton={handleBackButton}
-        />
-      ) : (
-        <>
-          <CollapseButton isOpen={isOpen2} setIsOpen={setIsOpen2} />
-          {isOpen2 && <WatchedList watched={watched} />}
-        </>
-      )}
+      <CollapseButton isOpen={isOpen2} setIsOpen={setIsOpen2} />
+      {isOpen2 && <WatchedList watched={watched} />}
     </div>
   );
 }
@@ -179,7 +101,8 @@ function Logo() {
   );
 }
 
-function SearchBox({ query, setQuery }) {
+function SearchBox() {
+  const [query, setQuery] = useState("");
   return (
     <input
       className="search"
@@ -207,18 +130,11 @@ function CollapseButton({ isOpen, setIsOpen }) {
   );
 }
 
-function MoviesList({ movies, selectedMovie, setSelectedMovie }) {
+function MoviesList({ movies }) {
   return (
-    <ul className="list list-movies">
+    <ul className="list">
       {movies?.map((movie) => (
-        <li
-          key={movie.imdbID}
-          onClick={() => {
-            selectedMovie === movie.imdbID
-              ? setSelectedMovie(null)
-              : setSelectedMovie(movie.imdbID);
-          }}
-        >
+        <li key={movie.imdbID}>
           <img src={movie.Poster} alt={`${movie.Title} poster`} />
           <h3>{movie.Title}</h3>
           <div>
@@ -283,76 +199,6 @@ function WatchedList({ watched }) {
           </li>
         ))}
       </ul>
-    </>
-  );
-}
-
-function Loader() {
-  return <p>Loading...</p>;
-}
-
-function ErrorMessage({ error }) {
-  return <p>{error}</p>;
-}
-
-function DisplaySelectedMovie({ selectedMovie, handleBackButton }) {
-  const [movie, setMovie] = useState({});
-
-  const {
-    Title: title,
-    Year: year,
-    Poster: poster,
-    Runtime: runtime,
-    imdbRating,
-    Plot: plot,
-    Released: released,
-    Actors: actors,
-    Director: director,
-    Genre: genre,
-  } = movie;
-
-  useEffect(
-    function () {
-      async function getSelectedMovie() {
-        const res = await fetch(
-          `http://www.omdbapi.com/?apikey=${KEY}&i=${selectedMovie}`
-        );
-
-        const data = await res.json();
-        setMovie(data);
-      }
-      getSelectedMovie();
-    },
-    [selectedMovie]
-  );
-
-  useEffect(
-    function () {
-      if (!title) {
-        return;
-      }
-      document.title = `Movie: ${title}`;
-
-      return () => (document.title = "usePopcorn");
-    },
-    [title]
-  );
-
-  return (
-    <>
-      <header>
-        <button className="btn-back" onClick={handleBackButton}>
-          &larr;
-        </button>
-
-        <div className="details-overview">
-          <h2 style={{ textAlign: "center" }}>{title}</h2>
-          <img style={{ width: "150px" }} src={poster} alt="poster" />
-          <p>
-            {released} &bull; {runtime}
-          </p>
-        </div>
-      </header>
     </>
   );
 }
